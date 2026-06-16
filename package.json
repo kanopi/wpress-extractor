@@ -1,5 +1,5 @@
 {
-  "name": "wpress-toolkit",
+  "name": "@kanopi/wpress-toolkit",
   "version": "1.0.0",
   "description": "Inspect, extract, and transfer files from All-in-One WP Migration .wpress archives — list/cat/tar/extract, plus disk-light chunked rsync and tar-over-ssh transfer helpers.",
   "bin": {
@@ -42,5 +42,8 @@
     "url": "https://github.com/kanopi/wpress-toolkit/issues"
   },
   "homepage": "https://github.com/kanopi/wpress-toolkit#readme",
-  "preferGlobal": true
+  "preferGlobal": true,
+  "publishConfig": {
+    "access": "public"
+  }
 }

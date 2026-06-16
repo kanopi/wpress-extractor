@@ -46,13 +46,13 @@ can't handle well:
 Global (gives you `wpress`, `wpress-rsync`, `wpress-ssh` on your PATH):
 
 ```bash
-npm install -g wpress-toolkit
+npm install -g @kanopi/wpress-toolkit
 ```
 
 One-off without installing:
 
 ```bash
-npx wpress-toolkit list backup.wpress
+npx @kanopi/wpress-toolkit list backup.wpress
 ```
 
 From a clone (for development):
@@ -270,20 +270,23 @@ fly.
 This repo is set up to publish as an npm package (`bin` entries make the three
 commands global on install).
 
-1. **Pick a name.** Edit `name` in `package.json`. If `wpress-toolkit` is taken,
-   scope it to your account/org, e.g. `@your-scope/wpress-toolkit`.
-2. **Set repo/author/license** fields in `package.json` to match your project.
-3. **Log in** to npm: `npm login`.
-4. **Preview** exactly what will be published (uses the `files` whitelist):
+The package is published under the **`@kanopi`** scope as
+`@kanopi/wpress-toolkit`. `publishConfig.access` is set to `public`, so a scoped
+public publish works without extra flags.
+
+1. **Be a member of the `@kanopi` npm org** (or change the scope in
+   `package.json` to one you own). Confirm with `npm whoami` and
+   `npm org ls kanopi`.
+2. **Log in** to npm: `npm login`.
+3. **Preview** exactly what will be published (uses the `files` whitelist):
    ```bash
    npm pack --dry-run
    ```
-5. **Publish:**
+4. **Publish:**
    ```bash
-   npm publish              # unscoped, or scoped+private
-   npm publish --access public   # for a public scoped (@scope/...) package
+   npm publish
    ```
-6. **Release new versions** with semver bumps:
+5. **Release new versions** with semver bumps:
    ```bash
    npm version patch    # or minor / major  (commits + tags)
    npm publish
