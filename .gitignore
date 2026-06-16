@@ -1,0 +1,17 @@
+# dependencies
+node_modules/
+
+# test / run artifacts
+output/
+big-files/
+wpress-skipped-*.tsv
+.wpress-rsync.*
+.wpress-manifest.*
+.wpress-filtered.*
+
+# os
+.DS_Store
+
+# npm
+*.tgz
+npm-debug.log*

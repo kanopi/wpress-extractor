@@ -1,0 +1,46 @@
+{
+  "name": "wpress-toolkit",
+  "version": "1.0.0",
+  "description": "Inspect, extract, and transfer files from All-in-One WP Migration .wpress archives — list/cat/tar/extract, plus disk-light chunked rsync and tar-over-ssh transfer helpers.",
+  "bin": {
+    "wpress": "wpress.js",
+    "wpress-rsync": "wpress-rsync.sh",
+    "wpress-ssh": "wpress-ssh.sh"
+  },
+  "files": [
+    "wpress.js",
+    "wpress-rsync.sh",
+    "wpress-ssh.sh",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=14"
+  },
+  "scripts": {
+    "test": "node wpress.js help > /dev/null && echo ok"
+  },
+  "keywords": [
+    "wpress",
+    "all-in-one-wp-migration",
+    "wordpress",
+    "backup",
+    "migration",
+    "extract",
+    "tar",
+    "rsync",
+    "pantheon",
+    "cli"
+  ],
+  "author": "Sean Dietrich <sean@kanopi.com>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kanopi/wpress-toolkit.git"
+  },
+  "bugs": {
+    "url": "https://github.com/kanopi/wpress-toolkit/issues"
+  },
+  "homepage": "https://github.com/kanopi/wpress-toolkit#readme",
+  "preferGlobal": true
+}
