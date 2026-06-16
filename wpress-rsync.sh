@@ -111,6 +111,52 @@ for a in ${RSYNC_EXTRA[@]+"${RSYNC_EXTRA[@]}"}; do
   esac
 done
 
+# --- Safeguard 1: warn on an absolute remote path (likely wrong on Pantheon) -
+# A remote target is "[user@]host:path" — i.e. a colon with no slash before it.
+DEST_HOST="${DEST%%:*}"
+DEST_PATH="${DEST#*:}"
+if [[ "$DEST" == *:* && "$DEST_HOST" != */* && "$DEST_PATH" == /* ]]; then
+  echo "!! warning: remote path '$DEST_PATH' is ABSOLUTE." >&2
+  echo "   SFTP-jailed hosts (e.g. Pantheon) expect a RELATIVE path — drop the" >&2
+  echo "   leading slash, e.g. '${DEST_HOST}:${DEST_PATH#/}'." >&2
+fi
+
+# --- Safeguard 2: rewrite an over-long ssh ControlPath to use %C -------------
+# The 104-byte unix-socket limit is easily blown by long hostnames (Pantheon)
+# when ControlPath uses %h/%r/%p. %C is a short fixed-length hash of the same
+# connection identity, so swapping to it is safe and keeps multiplexing.
+if [[ ${#RSYNC_EXTRA[@]} -gt 0 ]]; then
+  # Estimate the expansion of ssh tokens for a length check.
+  cp_user="${DEST_HOST%@*}"; [[ "$DEST_HOST" == *@* ]] || cp_user="$(id -un 2>/dev/null || echo user)"
+  cp_host="${DEST_HOST##*@}"
+  cp_lhost="$(hostname -s 2>/dev/null || hostname 2>/dev/null || echo localhost)"
+  for i in "${!RSYNC_EXTRA[@]}"; do
+    e="${RSYNC_EXTRA[$i]}"
+    case "$e" in
+      *ControlPath=*)
+        cp="${e##*ControlPath=}"; cp="${cp%% *}"          # the ControlPath token
+        cp_port="22"; case "$e" in *"-p "*) cp_port="${e##*-p }"; cp_port="${cp_port%% *}";; esac
+        exp="$cp"
+        exp="${exp/#\~/$HOME}"
+        exp="${exp//%h/$cp_host}"
+        exp="${exp//%r/$cp_user}"
+        exp="${exp//%p/$cp_port}"
+        exp="${exp//%l/$cp_lhost}"
+        exp="${exp//%C/0000000000000000000000000000000000000000}"  # %C ~ 40 chars
+        if [[ "$cp" == *%C* ]]; then
+          : # already using %C — fine
+        elif [[ ${#exp} -ge 104 ]]; then
+          cp_dir="${cp%/*}"; [[ "$cp_dir" == "$cp" ]] && cp_dir="~/.ssh"
+          new_cp="$cp_dir/wpress-cm-%C"
+          RSYNC_EXTRA[$i]="${e/ControlPath=$cp/ControlPath=$new_cp}"
+          echo "!! note: ssh ControlPath '$cp' would exceed the 104-byte socket limit;" >&2
+          echo "   rewrote it to '$new_cp' (short %C hash) so multiplexing still works." >&2
+        fi
+        ;;
+    esac
+  done
+fi
+
 # Manifest of every file under the target dir: "<bytes>\t<path>".
 MANIFEST="$(mktemp "./.wpress-manifest.XXXXXX")"
 SKIPPED=""
@@ -156,6 +202,9 @@ echo ">> budget $(human "$BUDGET")/batch -> ~$NUM_BATCHES batch(es); peak stagin
 
 if [[ "$DRYRUN" -eq 1 ]]; then
   echo ">> (dry run) would sync to: $DEST" >&2
+  if [[ ${#RSYNC_EXTRA[@]} -gt 0 ]]; then
+    echo ">> rsync passthrough: ${RSYNC_EXTRA[*]}" >&2
+  fi
   report_skipped
   rm -f "$MANIFEST"
   exit 0
