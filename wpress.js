@@ -241,6 +241,33 @@ function formatBytes(bytes) {
   return `${value.toFixed(unit === 0 ? 0 : 1)} ${units[unit]}`;
 }
 
+/**
+ * Join an archive entry path onto an output directory, refusing any result
+ * that would land outside it (e.g. "../" segments in a crafted header —
+ * "Zip Slip", CWE-22). Returns the absolute destination, or null if unsafe.
+ */
+function safeJoinPath(root, rel) {
+  const base = path.resolve(root);
+  const dest = path.resolve(base, rel);
+  const prefix = base.endsWith(path.sep) ? base : base + path.sep;
+  return dest.startsWith(prefix) ? dest : null;
+}
+
+/**
+ * Normalize an archive entry path for a tar stream. Returns null when the
+ * path is absolute or climbs out of the archive root via "..".
+ */
+function safeArchiveName(name) {
+  const norm = path.posix.normalize(name.replace(/\\/g, '/'));
+  if (path.posix.isAbsolute(norm) || norm === '..' || norm.startsWith('../')) return null;
+  return norm;
+}
+
+function warnUnsafe(rel) {
+  process.stderr.write(`\nSkipping unsafe path outside output directory: ${JSON.stringify(rel)}\n`);
+  process.exitCode = 1;
+}
+
 function ensureDir(dir) {
   fs.mkdirSync(dir, { recursive: true });
 }
@@ -383,7 +410,11 @@ function cmdExtract(input, output, opts) {
   try {
     let count = 0;
     for (const entry of iterateEntries(fd)) {
-      const destPath = path.join(output, entry.relativePath);
+      const destPath = safeJoinPath(output, entry.relativePath);
+      if (!destPath) {
+        warnUnsafe(entry.relativePath);
+        continue;
+      }
       writeEntry(fd, entry, destPath);
       count++;
       process.stderr.write(`\rExtracted ${count} files...`);
@@ -416,7 +447,11 @@ function cmdExtractFile(input, patterns, opts) {
 
       // Flat mode drops the directory structure; default preserves it.
       const destRel = opts.flat ? entry.name : entry.relativePath;
-      const destPath = path.join(output, destRel);
+      const destPath = safeJoinPath(output, destRel);
+      if (!destPath) {
+        warnUnsafe(destRel);
+        continue;
+      }
       matched++;
       totalSize += entry.size;
 
@@ -543,6 +578,12 @@ function cmdTar(input, patterns, opts) {
         if (name.startsWith(`${strip}/`)) name = name.slice(strip.length + 1);
       }
       if (name === '') continue;
+      const safeName = safeArchiveName(name);
+      if (!safeName) {
+        warnUnsafe(name);
+        continue;
+      }
+      name = safeName;
       matched++;
 
       // Names longer than 100 bytes need a GNU long-name (‘L’) entry first.
